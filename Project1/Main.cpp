@@ -1,6 +1,6 @@
 #include <iostream>
-#include <cstdlib>
-#include <ctime>
+//#include <cstdlib>
+//#include <ctime>
 
 const unsigned NAME_SIZE = 20;
 const unsigned HAND_SIZE = 3;
@@ -34,6 +34,8 @@ void copyStr(const char* str, char* copy)
 	}
 }
 
+
+
 const char DEFAULT_NAME[] = "PlayerX";
 const unsigned DEFAULT_NAME_LEN = 8;
 
@@ -52,6 +54,13 @@ struct Player
 	unsigned handValue = 0;
 	bool active = false;
 };
+
+void swapCards(Card& c1, Card& c2)
+{
+	Card swap = c1;
+	c1 = c2;
+	c2 = swap;
+}
 
 void dealCards(const Card cards[], Player players[], unsigned playersCount)
 {
@@ -107,6 +116,15 @@ void shuffleDeck(Card cards[])
 	}
 }
 
+bool isSevenOfSpades(Card card)
+{
+	if (card.face == '7' && card.symbol == 'S')
+	{
+		return true;
+	}
+	return false;
+}
+
 void namePlayers(Player players[], static unsigned playersCount)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -118,49 +136,102 @@ void namePlayers(Player players[], static unsigned playersCount)
 	
 }
 
-void bubbleSort(Card cards[]) {
-	for (int i = 0; i < HAND_SIZE - 1; i++) {
-		for (int j = 0; j < HAND_SIZE - i - 1; j++) {
+void bubbleSortCards(Card* cards, unsigned size) {
+	for (int i = 0; i < size - 1; i++) {
+		for (int j = 0; j < size- i - 1; j++) {
 			if (cards[j].value > cards[j + 1].value) {
-				Card temp = cards[j];
-				cards[j] = cards[j + 1];
-				cards[j + 1] = temp;
+				swapCards(cards[j], cards[j + 1]);
 			}
 		}
 	}
+
+	if (isSevenOfSpades(cards[1]))
+	{
+		swapCards(cards[1], cards[0]);
+	}
+
+	for (size_t i = 0; i < size; i++)
+	{
+		std::cout << cards[i].face << cards[i].symbol << " " << cards[i].value << "     SORTSORTSORT\n";
+	}
+	std::cout << "\n";
+
 }
 
-void updatePlayerHandValue(Player player)
+void updatePlayerHandValue(Player &player)
 {
-	//Измисли кода само за тази функция, която да определя колко е силна ръката на играч спрямо картите му.
+	//Card* cards = player.cards;
+	bubbleSortCards(player.cards, HAND_SIZE);
 
-	bubbleSort(player.cards);
-
-	//3 еднакви карти
-	if (player.cards[0].face == player.cards[1].face && player.cards[1].face == player.cards[2].face) {
-		if (player.cards[0].face == '7') {
-			player.handValue = 34;
-		}
-		else {
-			player.handValue = player.cards[0].value * 3;
-		}
+	//3 of 7
+	if (player.cards[2].face == '7')
+	{
+		player.handValue = 34;
 		return;
 	}
 
-	//3 еднакви бои
+	//2 of 7
+	if (player.cards[1].face == '7')
+	{
+		player.handValue = 23;
+		return;
+	}
+
+	//3 of a kind
+	if (player.cards[0].face == player.cards[1].face && player.cards[1].face == player.cards[2].face) {
+		player.handValue = player.cards[0].value * 3;
+		return;
+	}
+
+	//3 of a suit
 	if (player.cards[0].symbol == player.cards[1].symbol && player.cards[1].symbol == player.cards[2].symbol) {
 		player.handValue = player.cards[0].value + player.cards[1].value + player.cards[2].value;
 		return;
 	}
 
-	if
+	//7 Spades
+	if (isSevenOfSpades(player.cards[0]))
+	{
+		//2 of a kind
+		if (player.cards[1].face == player.cards[2].face)
+		{
+			player.handValue = player.cards[1].value * 2 + 11;
+			return;
+		}
+		//2 of a suit
+		if (player.cards[1].symbol == player.cards[2].symbol)
+		{
+			player.handValue = player.cards[1].value + player.cards[2].value + 11;
+			return;
+		}
+		
+		//default + 11
+		player.handValue = player.cards[2].value + 11;
+		return;
+	}
 
+	//2 of Ace
+	if (player.cards[1].face == 'A')
+	{
+		player.handValue = 22;
+		return;
+	}
 
+	//default
+	player.handValue = player.cards[2].value;
+}
+
+void updatePlayerHandValue(Player* players, unsigned playersCount)
+{
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		updatePlayerHandValue(players[i]);
+	}
 }
 
 int main()
 {
-	unsigned playersCount = 6;
+	unsigned playersCount = 9;
 	Player* players = new Player[playersCount];
 	namePlayers(players, playersCount);
 
@@ -179,6 +250,8 @@ int main()
 	{
 		std::cout << deck[i].face << deck[i].symbol << " " << deck[i].value << "\n";
 	}
+
+	updatePlayerHandValue(players, playersCount);
 
 	for (size_t i = 0; i < playersCount; i++)
 	{
