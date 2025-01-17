@@ -50,9 +50,17 @@ struct Player
 {
 	char name[DEFAULT_NAME_LEN];
 	Card cards[HAND_SIZE];
-	unsigned chips = SARTING_CHIPS;
+	unsigned money = SARTING_CHIPS * CHIP_VALUE;
 	unsigned handValue = 0;
-	bool active = false;
+	unsigned moneyInPot = 0;
+	bool active = true;
+};
+
+struct Pot
+{
+	unsigned money = 0;
+	unsigned currentHighBet = 0;
+	unsigned currentPoorestPlayer = CHIP_VALUE * SARTING_CHIPS;
 };
 
 void swapCards(Card& c1, Card& c2)
@@ -229,6 +237,103 @@ void updatePlayerHandValue(Player* players, unsigned playersCount)
 	}
 }
 
+int playTurn(Player& player, Pot& pot)
+{
+	if (!player.active)
+	{
+		return 0;
+	}
+
+	char input = 0;
+	std::cout << player.name << ", raise, fold or check? (r/f/c): ";
+	std::cin >> input;
+
+	//fold
+	if (input == 'f' || input == 'F')
+	{
+		player.active = false;
+		return 0;
+	}
+
+	//check
+	if (input == 'c' || input == 'C')
+	{
+		player.money -= pot.currentHighBet - player.moneyInPot;
+		player.moneyInPot = pot.currentHighBet;
+		return 0;
+	}
+
+	//raise
+	unsigned chipsToRaise = 0;
+	
+	if (input == 'r' || input == 'R')
+	{
+		unsigned maxChips = pot.currentPoorestPlayer / CHIP_VALUE;
+		std::cout << "Raise by how many chips? (1 chip = 10 money)";
+		std::cout << "Max allowed raise is by " << maxChips << " chips: ";
+		std::cin >> chipsToRaise;
+
+		while (chipsToRaise > pot.currentPoorestPlayer / CHIP_VALUE)
+		{
+			std::cout << "Try again. Max allowed raise is by " << maxChips << " chips: ";
+			std::cin >> chipsToRaise;
+		}
+
+		return chipsToRaise;
+	}
+
+	std::cout << "Wrong input!!!\n";
+	return playTurn(player, pot);
+}
+
+void win(Player players[], const unsigned playersCount, Pot& pot)
+{
+	unsigned winnerIndex = 0;
+
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		if (players[i].handValue > players[winnerIndex].handValue)
+		{
+			winnerIndex = i;
+		}
+	}
+
+	players[winnerIndex].money += pot.money;
+	pot.money = 0;
+	pot.currentHighBet = 0;
+	pot.currentPoorestPlayer = CHIP_VALUE * SARTING_CHIPS;
+
+	std::cout << "The winner is " << players[winnerIndex].name;
+}
+
+void playRound(Player players[], const unsigned playersCount, Pot& pot)
+{
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		players[i].moneyInPot = CHIP_VALUE;
+		players[i].money -= CHIP_VALUE;
+	}
+
+	pot.currentHighBet = CHIP_VALUE;
+	pot.currentPoorestPlayer = players[0].money;
+
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		unsigned chipsToRaise = playTurn(players[i], pot);
+		unsigned moneyToRaise = chipsToRaise * CHIP_VALUE;
+
+		pot.money += moneyToRaise;
+		pot.currentHighBet += moneyToRaise;
+		if (players[i].money < pot.currentPoorestPlayer)
+		{
+			pot.currentPoorestPlayer = players[i].money;
+		}
+	}
+
+
+	win(players, playersCount, pot);
+}
+
 int main()
 {
 	unsigned playersCount = 9;
@@ -246,6 +351,9 @@ int main()
 	std::cout << "\n";*/
 	shuffleDeck(deck);
 	dealCards(deck, players, playersCount);
+
+	Pot pot;
+
 	for (size_t i = 0; i < DECK_SIZE; i++)
 	{
 		std::cout << deck[i].face << deck[i].symbol << " " << deck[i].value << "\n";
@@ -260,11 +368,15 @@ int main()
 		{
 			std::cout << players[i].cards[j].face << players[i].cards[j].symbol << " " << players[i].cards[j].value << "   ";
 		}
-		std::cout << players[i].chips << " " << players[i].handValue << "\n\n";
+		std::cout << players[i].money << " " << players[i].handValue << "\n\n";
 
 		
 	}
-	
+
+
+	playRound(players, playersCount, pot);
+
+	return 0;
 	/*
 	std::srand(std::time(0));
 	
