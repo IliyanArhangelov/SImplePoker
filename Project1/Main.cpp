@@ -34,8 +34,6 @@ void copyStr(const char* str, char* copy)
 	}
 }
 
-
-
 const char DEFAULT_NAME[] = "PlayerX";
 const unsigned DEFAULT_NAME_LEN = 8;
 
@@ -249,7 +247,39 @@ void updatePoorestActivePlayer(const Player players[], unsigned playersCount, Po
 	}
 }
 
-int playTurn(Player& player, Pot& pot)
+void call(Player& player, Pot& pot)
+{
+	unsigned moneyToPot = pot.currentHighBet - player.moneyInPot;
+	player.moneyInPot += moneyToPot;
+	pot.money += moneyToPot;
+	player.money -= moneyToPot;
+}
+
+void raise(Player& player, Pot& pot, const unsigned chipsToRaise)
+{
+	unsigned moneyToRaise = chipsToRaise * CHIP_VALUE;
+	pot.currentHighBet += moneyToRaise;
+
+	call(player, pot);
+}
+
+unsigned askRaise(Player& player, Pot& pot)
+{
+	unsigned chipsToRaise = 0;
+	unsigned maxChips = pot.currentPoorestPlayer / CHIP_VALUE;
+	std::cout << "Raise by how many chips? (1 chip = 10 money)\n";
+	std::cout << "Max allowed raise is by " << maxChips << " chips: ";
+	std::cin >> chipsToRaise;
+
+	if (chipsToRaise > pot.currentPoorestPlayer / CHIP_VALUE || !chipsToRaise)
+	{
+		std::cout << "Try again. Max allowed raise is by " << maxChips << " chips: ";
+		return askRaise(player, pot);
+	}
+	return chipsToRaise;
+}
+
+unsigned playTurn(Player& player, Pot& pot)
 {
 	if (!player.active)
 	{
@@ -257,7 +287,7 @@ int playTurn(Player& player, Pot& pot)
 	}
 
 	char input = 0;
-	std::cout << player.name << ", raise, fold or check? (r/f/c): ";
+	std::cout << player.name << ", raise, fold or calls? (r/f/c): ";
 	std::cin >> input;
 
 	//fold
@@ -268,60 +298,112 @@ int playTurn(Player& player, Pot& pot)
 		return 0;
 	}
 
-	//check
+	//calls
 	if (input == 'c' || input == 'C')
 	{
-		player.money -= pot.currentHighBet - player.moneyInPot;
-		player.moneyInPot = pot.currentHighBet;
-		return -1;
+		call(player, pot);
+		return 1;
 	}
 
 	//raise
-	unsigned chipsToRaise = 0;
-	
 	if (input == 'r' || input == 'R')
 	{
-		unsigned maxChips = pot.currentPoorestPlayer / CHIP_VALUE;
-		std::cout << "Raise by how many chips? (1 chip = 10 money)\n";
-		std::cout << "Max allowed raise is by " << maxChips << " chips: ";
-		std::cin >> chipsToRaise;
-
-		while (chipsToRaise > pot.currentPoorestPlayer / CHIP_VALUE)
-		{
-			std::cout << "Try again. Max allowed raise is by " << maxChips << " chips: ";
-			std::cin >> chipsToRaise;
-		}
-
-		return chipsToRaise;
+		unsigned chipsToRaise = askRaise(player, pot);
+		raise(player, pot, chipsToRaise);
+		return 2;
 	}
 
-	std::cout << "Wrong input!!!\n";
+	std::cout << "\nWrong input!!!\n\n";
 	return playTurn(player, pot);
+}
+
+void playTurns(Player players[], const unsigned playersCount, Pot& pot)
+{
+	int countOfCalls = 0;
+	bool isStart = true;
+	for (size_t i = 0; countOfCalls < pot.activePlayersCount - 1; i++)
+	{
+		unsigned playerIndex = i % playersCount;
+		std::cout << "\n";
+		std::cout << pot.money << "lv, High bet: " << pot.currentHighBet << " Money in pot: " << players[playerIndex].moneyInPot << "\n";
+		
+
+		unsigned action = playTurn(players[playerIndex], pot);
+		if (action == 1)
+		{
+			countOfCalls++;
+		}
+		else if (action == 2)
+		{
+			if (isStart)
+			{
+				pot.activePlayersCount--;
+				isStart = false;
+			}
+			countOfCalls = 0;
+		}
+		updatePoorestActivePlayer(players, playersCount, pot);
+	}
+}
+
+unsigned winningHandValue(const Player players[], const unsigned playersCount)
+{
+	unsigned winningHand = 0;
+
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		if (players[i].handValue > winningHand && players[i].active)
+		{
+			winningHand = players[i].handValue;
+		}
+	}
+	return winningHand;
+}
+
+unsigned countWinners(const Player players[], const unsigned playersCount, const unsigned winningHand)
+{
+	unsigned countOfWinners = 0;
+
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		if (players[i].handValue == winningHand && players[i].active)
+		{
+			countOfWinners++;
+		}
+	}
+	return winningHand;
+}
+
+void awardWinner(Player players[], const unsigned playersCount, Pot& pot, const unsigned winningHand)
+{
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		if (players[i].handValue == winningHand && players[i].active)
+		{
+			players[i].money += pot.money;
+			pot.money = 0;
+			pot.currentHighBet = 0;
+			pot.currentPoorestPlayer = CHIP_VALUE * SARTING_CHIPS;
+
+			std::cout << "The winner is " << players[i].name;
+			return;
+		}
+	}
 }
 
 void win(Player players[], const unsigned playersCount, Pot& pot)
 {
-	unsigned winnerIndex = 0;
-
-	for (size_t i = 0; i < playersCount; i++)
+	unsigned winningHand = winningHandValue(players, playersCount);
+	unsigned countOfWinners = countWinners(players, playersCount, winningHand);
+	if (countOfWinners == 1)
 	{
-		if (players[i].handValue > players[winnerIndex].handValue)
-		{
-			winnerIndex = i;
-		}
+		awardWinner(players, playersCount, pot, winningHand);
 	}
-
-	players[winnerIndex].money += pot.money;
-	pot.money = 0;
-	pot.currentHighBet = 0;
-	pot.currentPoorestPlayer = CHIP_VALUE * SARTING_CHIPS;
-
-	std::cout << "The winner is " << players[winnerIndex].name;
 }
 
 void playRound(Player players[], const unsigned playersCount, Pot& pot)
 {
-	bool isStart = true;
+	
 	pot.activePlayersCount++;
 	for (size_t i = 0; i < playersCount; i++)
 	{
@@ -331,32 +413,7 @@ void playRound(Player players[], const unsigned playersCount, Pot& pot)
 	pot.money += CHIP_VALUE * playersCount;
 	pot.currentPoorestPlayer = players[0].money;
 
-	int countOfChecks = 0;
-
-	for (size_t i = 0; countOfChecks < pot.activePlayersCount - 1; i++)
-	{
-		unsigned playerIndex = i % playersCount;
-
-		unsigned chipsToRaise = playTurn(players[playerIndex], pot);
-		if (chipsToRaise == -1)
-		{
-			countOfChecks++;
-		}
-		else if (!chipsToRaise)
-		{
-			if (isStart)
-			{
-				pot.activePlayersCount--;
-				isStart = false;
-			}
-			countOfChecks = 0;
-			unsigned moneyToRaise = chipsToRaise * CHIP_VALUE;
-			pot.currentHighBet += moneyToRaise;
-			pot.money += pot.currentHighBet;
-			players[playerIndex].money -= pot.currentHighBet;
-		}
-		updatePoorestActivePlayer(players, playersCount, pot);
-	}
+	playTurns(players, playersCount, pot);
 	win(players, playersCount, pot);
 }
 
