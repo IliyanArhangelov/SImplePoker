@@ -1,6 +1,19 @@
+/**
+* 
+* Solution to course project # 10
+* Introduction to programming course
+* Faculty of Mathematics and Informatics of Sofia University
+* Winter semester 2024/2025
+*
+* @author Iliyan Arhangelov
+* @idnumber 0MI0600492 @compiler VC
+*
+* <предназначение на файла>
+*
+*/
+
 #include <iostream>
-//#include <cstdlib>
-//#include <ctime>
+#include <fstream>
 
 const unsigned NAME_SIZE = 20;
 const unsigned HAND_SIZE = 3;
@@ -12,9 +25,7 @@ const unsigned FACES_COUNT = 8;
 const char SYMBOLS[] = {'S', 'H', 'D', 'C'};
 const unsigned SYMBOLS_COUNT = 4;
 
-
 const unsigned DECK_SIZE = FACES_COUNT * SYMBOLS_COUNT;
-
 
 const char CLEAR_SCREEN[] = "\033[H\033[J";
 unsigned strLen(const char* str)
@@ -67,23 +78,25 @@ struct Pot
 	bool playGame = true;
 };
 
+
 void printHand(const Player player);
 void printPlayersStats(const Player players[], const unsigned playersCount);
-void printDebug(Player players[], const unsigned playersCount, Pot& pot);
 void updateActivePlayersCount(Player players[], const unsigned playersCount, Pot& pot);
 void setup(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
-void multipleWinners(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
-void win(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
-void takeBlind(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
+void multipleWinners(Player players[], const unsigned playersCount, Pot& pot);
+void win(Player players[], const unsigned playersCount, Pot& pot);
+void takeBlind(Player players[], const unsigned playersCount, Pot& pot);
 void printPlayerStatus(const Player player, const Pot pot);
 
+//swaps 2 cards
 void swapCards(Card& c1, Card& c2)
 {
 	Card swap = c1;
 	c1 = c2;
 	c2 = swap;
-}
+} 
 
+//every player takes the next cards from the deck
 void dealCards(const Card cards[], Player players[], unsigned playersCount)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -95,6 +108,7 @@ void dealCards(const Card cards[], Player players[], unsigned playersCount)
 	}
 }
 
+//sets the strength of every single card
 void updateCardValue(Card& card)
 {
 	if (card.face == 'A')
@@ -105,12 +119,14 @@ void updateCardValue(Card& card)
 
 	card.value = card.face - '0';
 
+	//non number cards have a value of 10
 	if (card.value > 10)
 	{
 		card.value = 10;
 	}
 }
 
+//fills the deck with cards
 void fillDeck(Card cards[])
 {
 	for (size_t i = 0; i < DECK_SIZE; i += SYMBOLS_COUNT)
@@ -126,15 +142,13 @@ void fillDeck(Card cards[])
 
 void shuffleDeck(Card cards[])
 {
-	std::srand(std::time(0));
+	std::srand(std::time(0)); //random number depending of the machine time
 
+	//goes trough every card and swaps it with a random card
 	for (size_t i = 0; i < DECK_SIZE; i++)
 	{
 		int random = rand() % DECK_SIZE;
-
-		Card temp = cards[i];
-		cards[i] = cards[random];
-		cards[random] = temp;
+		swapCards(cards[i], cards[random]);
 	}
 }
 
@@ -147,6 +161,7 @@ bool isSevenOfSpades(Card card)
 	return false;
 }
 
+//every player is given a name
 void namePlayers(Player players[], static unsigned playersCount)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -158,6 +173,7 @@ void namePlayers(Player players[], static unsigned playersCount)
 	
 }
 
+//sorts cards by strength in your hand
 void bubbleSortCards(Card* cards, unsigned size)
 {
 	for (int i = 0; i < size - 1; i++) {
@@ -168,12 +184,14 @@ void bubbleSortCards(Card* cards, unsigned size)
 		}
 	}
 
+	//7 Spades is aways first
 	if (isSevenOfSpades(cards[1]))
 	{
 		swapCards(cards[1], cards[0]);
 	}
 }
 
+//updates the hand value of a single player
 void updatePlayerHandValue(Player &player)
 {
 	bubbleSortCards(player.cards, HAND_SIZE);
@@ -236,6 +254,7 @@ void updatePlayerHandValue(Player &player)
 	player.handValue = player.cards[2].value;
 }
 
+//updates the hand value of every player
 void updatePlayerHandValue(Player* players, unsigned playersCount)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -244,6 +263,7 @@ void updatePlayerHandValue(Player* players, unsigned playersCount)
 	}
 }
 
+//updates how much money the poorest player has
 void updatePoorestActivePlayer(const Player players[], unsigned playersCount, Pot& pot)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -255,6 +275,7 @@ void updatePoorestActivePlayer(const Player players[], unsigned playersCount, Po
 	}
 }
 
+//takes the requied amount from the player and gives it to the pot, depending on the last raise
 void call(Player& player, Pot& pot)
 {
 	unsigned moneyToPot = pot.currentHighBet - player.moneyInPot;
@@ -263,14 +284,17 @@ void call(Player& player, Pot& pot)
 	player.money -= moneyToPot;
 }
 
+//raising the bet
 void raise(Player& player, Pot& pot, const unsigned chipsToRaise)
 {
 	unsigned moneyToRaise = chipsToRaise * CHIP_VALUE;
 	pot.currentHighBet += moneyToRaise;
 
+	//then the action is the same as calling to a previous high bet
 	call(player, pot);
 }
 
+//ask amount of chips to raise
 unsigned askRaise(Player& player, Pot& pot)
 {
 	unsigned chipsToRaise = 0;
@@ -279,6 +303,7 @@ unsigned askRaise(Player& player, Pot& pot)
 	std::cout << "Max allowed raise is by " << maxChips << " chips: ";
 	std::cin >> chipsToRaise;
 
+	//prevents invalid input
 	while (chipsToRaise > pot.currentPoorestPlayer / CHIP_VALUE)
 	{
 		std::cout << "Try again. Max allowed raise is by " << maxChips << " chips: ";
@@ -287,17 +312,21 @@ unsigned askRaise(Player& player, Pot& pot)
 	return chipsToRaise;
 }
 
+//awards the winner
 void awarding(Player& player, Pot& pot)
 {
+	//takes the money from the pot and gives it to the player
 	player.money += pot.money;
 	pot.money = 0;
 	pot.currentHighBet = 0;
 
+	//prints winning message
 	std::cout << CLEAR_SCREEN << "The winner is " << player.name << "\nWinning hand: ";
 	printHand(player);
 	std::cout << "\nHand value: " << player.handValue << "\n";
 }
 
+//makes a player take a turn
 unsigned playTurn(Player& player, Pot& pot)
 {
 	if (!player.active)
@@ -329,14 +358,20 @@ unsigned playTurn(Player& player, Pot& pot)
 	if (input == 'r' || input == 'R')
 	{
 		unsigned chipsToRaise = askRaise(player, pot);
+		if (!chipsToRaise) // raising by zero is same as calling
+		{
+			return 1;
+		}
 		raise(player, pot, chipsToRaise);
 		return 2;
 	}
 
+	//prevents wrong input
 	std::cout << "\nWrong input!!!\n\n";
 	return playTurn(player, pot);
 }
 
+//finds the index of the last active player
 unsigned findIndexOfLastPlayer(Player players[])
 {
 	for (size_t i = 0;; i++)
@@ -355,8 +390,10 @@ void playTurns(Player players[], const unsigned playersCount, Pot& pot)
 	updatePoorestActivePlayer(players, playersCount, pot);
 	updateActivePlayersCount(players, playersCount, pot);
 
+	//cycle stops when enough people have folded or called
 	for (size_t i = 0; countOfCalls < pot.activePlayersCount + isStart - 1; i++)
 	{
+		//when everyone exept one player folds
 		if (pot.activePlayersCount == 1)
 		{
 			return;
@@ -367,19 +404,22 @@ void playTurns(Player players[], const unsigned playersCount, Pot& pot)
 
 
 		unsigned action = playTurn(players[playerIndex], pot);
+		//when calls
 		if (action == 1)
 		{
 			countOfCalls++;
 		}
+		//when raises
 		else if (action == 2)
 		{
 			isStart = false;
-			countOfCalls = 0;
+			countOfCalls = 0; //new bet, so the calls should start again from 0
 		}
 		updatePoorestActivePlayer(players, playersCount, pot);
 	}
 }
 
+//finds the hand with the most value among the active players
 unsigned winningHandValue(const Player players[], const unsigned playersCount)
 {
 	unsigned winningHand = 0;
@@ -394,6 +434,7 @@ unsigned winningHandValue(const Player players[], const unsigned playersCount)
 	return winningHand;
 }
 
+//counts how many people have winning hand, so we know when a tie comes
 unsigned countWinners(const Player players[], const unsigned playersCount, const unsigned winningHand)
 {
 	unsigned countOfWinners = 0;
@@ -408,6 +449,7 @@ unsigned countWinners(const Player players[], const unsigned playersCount, const
 	return countOfWinners;
 }
 
+//finds single active player with winning hand and gives him the award
 void awardWinner(Player players[], const unsigned playersCount, Pot& pot, const unsigned winningHand)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -415,19 +457,22 @@ void awardWinner(Player players[], const unsigned playersCount, Pot& pot, const 
 		if (players[i].handValue == winningHand && players[i].active)
 		{
 			awarding(players[i], pot);
+			return;
 		}
 	}
 }
 
+//activates the players that have money
 void activatePlayers(Player players[], const unsigned playersCount, Pot& pot)
 {
 	for (size_t i = 0; i < playersCount; i++)
 	{
-		players[i].active = !!players[i].money;
+		players[i].active = !!players[i].money; //unactive only when money = 0
 	}
 	updateActivePlayersCount(players, playersCount, pot);
 }
 
+//deactivates people that have losing hand
 void deactivateLosers(Player players[], const unsigned playersCount, Pot& pot, const unsigned winningHand)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -441,9 +486,10 @@ void deactivateLosers(Player players[], const unsigned playersCount, Pot& pot, c
 	}
 }
 
+//asks losers to rejoin for a TIE
 void askRejoin(Player& player, Pot& pot, const unsigned rejoinCost)
 {
-	if (rejoinCost > player.money)
+	if (rejoinCost > player.money) //if not enough money, no rejoin
 	{
 		std::cout << player.name << ", not enough money to rejoin :(\n";
 		return;
@@ -456,6 +502,7 @@ void askRejoin(Player& player, Pot& pot, const unsigned rejoinCost)
 
 	if (input == 'y' || input == 'Y')
 	{
+		//takes the money from the player and gives it to the pot
 		player.money -= rejoinCost;
 		pot.money += rejoinCost;
 		player.active = true;
@@ -467,18 +514,24 @@ void askRejoin(Player& player, Pot& pot, const unsigned rejoinCost)
 		return;
 	}
 
+	//prevents wrong input
 	std::cout << "Wrong input!";
 	askRejoin(player, pot, rejoinCost);
 }
 
+//gives active players with 0 money +50 for the tie
 void feedThePoor(Player players[], const unsigned playersCount)
 {
 	for (size_t i = 0; i < playersCount; i++)
 	{
-		players[i].money += (players[i].money == 0 && players[i].active) * CHARITY;
+		if (players[i].active)
+		{
+			players[i].money += CHARITY;
+		} 
 	}
 }
 
+//updates pot.activePlayersCount by iterating trough the players
 void updateActivePlayersCount(Player players[], const unsigned playersCount, Pot& pot)
 {
 	pot.activePlayersCount = 0;
@@ -488,6 +541,7 @@ void updateActivePlayersCount(Player players[], const unsigned playersCount, Pot
 	}
 }
 
+//prints the cards in players hand
 void printHand(const Player player)
 {
 	for (size_t j = 0; j < HAND_SIZE; j++)
@@ -496,6 +550,7 @@ void printHand(const Player player)
 	}
 }
 
+//prints information about the players
 void printPlayersStats(const Player players[], const unsigned playersCount)
 {
 	std::cout << CLEAR_SCREEN;
@@ -511,59 +566,56 @@ void printPlayersStats(const Player players[], const unsigned playersCount)
 		{
 			std::cout << "Unactive;  ";
 		}
-		std::cout << "Money: " << players[i].money << ";  Money in pot: " << players[i].moneyInPot << "\n\n";
+		std::cout << "Money: " << players[i].money << ";  Money in pot: " << players[i].moneyInPot << "\n";
 		
 	}
+	std::cout << "\n";
 }
 
+//prints information about the current playing player
 void printPlayerStatus(const Player player, const Pot pot)
 {
 	std::cout << player.name << ":\nHand: ";
 	printHand(player);
-	std::cout << "\nHand value: " << player.handValue << "\n";
-	std::cout <<"Money in pot:" << pot.money << "\nHigh bet: " << pot.currentHighBet << "\nYour money in pot: "
-		<< player.moneyInPot << "\nActive players: " << pot.activePlayersCount << "\n";
+	std::cout << "\nHand value: " << player.handValue << "\n\n";
+	std::cout <<"Money in pot: " << pot.money << "\nHigh bet: " << pot.currentHighBet << "\nYour money in pot: "
+		<< player.moneyInPot << "\n\nActive players: " << pot.activePlayersCount << "\n";
 }
 
-void printDebug(Player players[], const unsigned playersCount, Pot& pot)
-{
-	for (size_t i = 0; i < playersCount; i++)
-	{
-		std::cout << players[i].name << ": \n";
-		printHand(players[i]);
-		std::cout << players[i].money << " " << players[i].handValue << "\n\n";
-	}
-}
-
-void playEquals(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
+//combines the operations with the cards
+void dealer(Player players[], const unsigned playersCount, Card deck[])
 {
 	shuffleDeck(deck);
 	dealCards(deck, players, playersCount);
-
 	updatePlayerHandValue(players, playersCount);
 }
 
-void playGame(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
+//ask to load a previous game from the save file
+bool askLoadPreviousGame()
 {
-	activatePlayers(players, playersCount, pot);
-	setup(players, playersCount, pot, deck);
-	updatePoorestActivePlayer(players, playersCount, pot);
-	takeBlind(players, playersCount, pot, deck);
-	do
+	char input = 0;
+
+	std::cout << "Continue previous game? (y/n): ";
+	std::cin >> std::ws >> input; //inconsistent without std::ws
+	std::cin.ignore(100, '\n'); //so the input is only the first inputed character
+
+	if (input == 'y' || input == 'Y')
 	{
-		updatePoorestActivePlayer(players, playersCount, pot);
-		playEquals(players, playersCount, pot, deck);
-		playTurns(players, playersCount, pot);
-		win(players, playersCount, pot, deck);
-		if (pot.multipleWinners)
-		{
-			printPlayersStats(players, playersCount);
-			std::cout << "IT'S A TIE!\n\n";
-			multipleWinners(players, playersCount, pot, deck);
-		}
+		return true;
+	}
+	if (input == 'n' || input == 'N')
+	{
+		return false;
+	}
 
-	} while (pot.multipleWinners);
+	//prevents wrong input
+	std::cout << "Wrong input!\n\n";
+	return askLoadPreviousGame();
+}
 
+//asks the player to continue playing the current game
+void askContinueGame(Pot& pot)
+{
 	char input = 0;
 	std::cout << "\n\n\nPlay again? (y/n): ";
 	std::cin >> std::ws >> input;
@@ -572,21 +624,45 @@ void playGame(Player players[], const unsigned playersCount, Pot& pot, Card deck
 	while (input != 'y' && input != 'Y' && input != 'n' && input != 'N')
 	{
 		std::cout << "\nWrong input !!!\nPlay again? (y/n): ";
-		std::cin >> std::ws >> input;
+		std::cin >> std::ws >> input; //inconsistent without std::ws
 		std::cin.ignore(100, '\n');
 	}
 
+	//stops the game 
 	if (input == 'n' || input == 'N')
 	{
 		pot.playGame = false;
 	}
 
+	//continues by default
 }
 
-void multipleWinners(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
+void playGame(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
+{
+	setup(players, playersCount, pot, deck);
+	do //turns are being played untill there is only one winner
+	{
+		updatePoorestActivePlayer(players, playersCount, pot);
+		dealer(players, playersCount, deck);
+		playTurns(players, playersCount, pot);
+		win(players, playersCount, pot);
+		if (pot.multipleWinners)
+		{
+			printPlayersStats(players, playersCount);
+			std::cout << "IT'S A TIE!\n\n";
+			multipleWinners(players, playersCount, pot);
+		}
+
+	} while (pot.multipleWinners);
+
+	askContinueGame(pot);
+}
+
+
+void multipleWinners(Player players[], const unsigned playersCount, Pot& pot)
 {
 	pot.currentHighBet = 0;
-	unsigned rejoinCost = (pot.money / 20) * 10;
+	unsigned rejoinCost = (pot.money / (CHIP_VALUE * 2)) * CHIP_VALUE; //so we are sure the about can be payed with chips 
 	for (size_t i = 0; i < playersCount; i++)
 	{
 		if (!players[i].active)
@@ -594,17 +670,17 @@ void multipleWinners(Player players[], const unsigned playersCount, Pot& pot, Ca
 			askRejoin(players[i], pot, rejoinCost);
 		}
 	}
-
 	feedThePoor(players, playersCount);
 }
 
-void win(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
+//responsible for winning after the players have stopped taking turns
+void win(Player players[], const unsigned playersCount, Pot& pot)
 {
 	unsigned winningHand = winningHandValue(players, playersCount);
 	unsigned countOfWinners = countWinners(players, playersCount, winningHand);
 	deactivateLosers(players, playersCount, pot, winningHand);
 
-	if (countOfWinners == 1)
+	if (countOfWinners == 1) // only one winner
 	{
 		awardWinner(players, playersCount, pot, winningHand);
 		pot.multipleWinners = false;
@@ -614,7 +690,8 @@ void win(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
 	pot.multipleWinners = true;
 }
 
-void takeBlind(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
+//takes a blind from every player at the start of the game
+void takeBlind(Player players[], const unsigned playersCount, Pot& pot)
 {
 	for (size_t i = 0; i < playersCount; i++)
 	{
@@ -626,36 +703,64 @@ void takeBlind(Player players[], const unsigned playersCount, Pot& pot, Card dec
 	pot.money += CHIP_VALUE * pot.activePlayersCount;
 }
 
+//sets the game contidions
 void setup(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
 {
-	pot.activePlayersCount = 0;
+	fillDeck(deck);
 	activatePlayers(players, playersCount, pot);
 	updateActivePlayersCount(players, playersCount, pot);
+	updatePoorestActivePlayer(players, playersCount, pot);
+	takeBlind(players, playersCount, pot);
+}
+
+//saves the information of the game to the save file
+void saveGame(const Player players[], const unsigned playersCount)
+{
+	std::ofstream saveFile("SAVE.txt", std::ios::trunc);
+	saveFile << playersCount; //first line is the player count
+
+	for (size_t i = 0; i < playersCount; i++) //every next line is the money in every player's bank
+	{
+		saveFile << '\n' << players[i].money;
+	}
+	saveFile.close();
 }
 
 int main()
 {
 	unsigned playersCount = 0;
-	
-	do
+	bool loadSave = false;
+	std::ifstream saveFile("SAVE.txt");
+	saveFile >> playersCount;
+
+	if (playersCount) //would be false if save doesn't exist or if empty
+	{
+		loadSave = askLoadPreviousGame();
+		playersCount *= loadSave; //if loadSave is false, player count becomes zero
+	}
+	while ((playersCount < 2 || playersCount > 9) && !loadSave) //when the player refuses to load previous
 	{
 		std::cout << CLEAR_SCREEN << "How many players will play? (2 - 9): ";
 		std::cin >> playersCount;
-	} while (playersCount < 2 || playersCount > 9);
+	}
 
 	Player* players = new Player[playersCount];
 	namePlayers(players, playersCount);
+	for (size_t i = 0; i < playersCount && loadSave; i++) //gives the players their money from the previous game
+	{
+		saveFile >> players[i].money;
+	}
+	saveFile.close();
 
 	Card* deck = new Card[DECK_SIZE];
-	fillDeck(deck);
-
 	Pot pot;
-	activatePlayers(players, playersCount, pot);
-
-	while (pot.playGame)
+	while (pot.playGame) //plays until the user refuses to continue
 	{
 		playGame(players, playersCount, pot, deck);
 	}
-
+	//ending the game
+	saveGame(players, playersCount);
+	delete[] players;
+	delete[] deck;
 	return 0;
 }
