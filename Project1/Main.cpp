@@ -65,12 +65,14 @@ struct Pot
 	bool playGame = true;
 };
 
+void printPlayersStats(const Player players[], const unsigned playersCount);
 void printDebug(Player players[], const unsigned playersCount, Pot& pot);
 void updateActivePlayersCount(Player players[], const unsigned playersCount, Pot& pot);
 void setup(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
 void multipleWinners(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
 void win(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
 void takeBlind(Player players[], const unsigned playersCount, Pot& pot, Card deck[]);
+void printPlayerStatus(const Player player, const Pot pot);
 
 void swapCards(Card& c1, Card& c2)
 {
@@ -349,15 +351,14 @@ void playTurns(Player players[], const unsigned playersCount, Pot& pot)
 
 	for (size_t i = 0; countOfCalls < pot.activePlayersCount + isStart - 1; i++)
 	{
-		printDebug(players, playersCount, pot);
 		if (pot.activePlayersCount == 1)
 		{
 			return;
 		}
 		unsigned playerIndex = i % playersCount;
-		std::cout << "\n";
-		std::cout << pot.money << "lv, High bet: " << pot.currentHighBet << " Money in pot: " << players[playerIndex].moneyInPot << "   " << pot.activePlayersCount << " aktivni\n";
-		
+		printPlayersStats(players, playersCount);
+		printPlayerStatus(players[playerIndex], pot);
+
 
 		unsigned action = playTurn(players[playerIndex], pot);
 		if (action == 1)
@@ -479,6 +480,37 @@ void updateActivePlayersCount(Player players[], const unsigned playersCount, Pot
 	}
 }
 
+void printPlayersStats(const Player players[], const unsigned playersCount)
+{
+	for (size_t i = 0; i < playersCount; i++)
+	{
+		std::cout << players[i].name << ": ";
+
+		if (players[i].active)
+		{
+			std::cout << "Active;  ";
+		}
+		else
+		{
+			std::cout << "Unctive;  ";
+		}
+		std::cout << "Money: " << players[i].money << ";  Money in pot: " << players[i].moneyInPot << "\n\n";
+		
+	}
+}
+
+void printPlayerStatus(const Player player, const Pot pot)
+{
+	std::cout << player.name << ":\nHand: ";
+	for (size_t j = 0; j < HAND_SIZE; j++)
+	{
+		std::cout << player.cards[j].face << player.cards[j].symbol << "   ";
+	}
+	std::cout << "\nHand value: " << player.handValue << "\n";
+	std::cout <<"Money in pot:" << pot.money << "\nHigh bet: " << pot.currentHighBet << "\nYour money in pot: "
+		<< player.moneyInPot << "\nActive players: " << pot.activePlayersCount << "\n";
+}
+
 void printDebug(Player players[], const unsigned playersCount, Pot& pot)
 {
 	for (size_t i = 0; i < playersCount; i++)
@@ -497,18 +529,7 @@ void playEquals(Player players[], const unsigned playersCount, Pot& pot, Card de
 	shuffleDeck(deck);
 	dealCards(deck, players, playersCount);
 
-	std::cout << pot.activePlayersCount << " aktivni\n";
 	updatePlayerHandValue(players, playersCount);
-
-	for (size_t i = 0; i < playersCount; i++)
-	{
-		std::cout << players[i].name << ": \n";
-		for (size_t j = 0; j < HAND_SIZE; j++)
-		{
-			std::cout << players[i].cards[j].face << players[i].cards[j].symbol << " " << players[i].cards[j].value << "   ";
-		}
-		std::cout << players[i].money << " " << players[i].handValue << "\n\n";
-	}	
 }
 
 void playGame(Player players[], const unsigned playersCount, Pot& pot, Card deck[])
@@ -591,7 +612,7 @@ void takeBlind(Player players[], const unsigned playersCount, Pot& pot, Card dec
 {
 	for (size_t i = 0; i < playersCount; i++)
 	{
-
+		players[i].moneyInPot += CHIP_VALUE * players[i].active;
 		players[i].money -= CHIP_VALUE * players[i].active;
 	}
 	
