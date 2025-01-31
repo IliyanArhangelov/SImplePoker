@@ -8,7 +8,7 @@
 * @author Iliyan Arhangelov
 * @idnumber 0MI0600492 @compiler VC
 *
-* <предназначение на файла>
+* Simplified Poker
 *
 */
 
